@@ -1,2 +1,2 @@
 # SLIPP
-1
+LIPP for string keys
