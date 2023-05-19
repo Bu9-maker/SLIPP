@@ -1,2 +1,2 @@
 # SLIPP
-lipp for string keys
+1
