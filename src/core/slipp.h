@@ -712,10 +712,10 @@ private:
             BITMAP_SET(node->child_bitmap, pos);
             BITMAP_SET(node->cp_bitmap, pos);
             node->items[pos].comp.data.key = key_cp1;
-            node->items[pos].comp.data.child = subtree1;
+            node->items[pos].comp.child = subtree1;
         }
         {
-            int pos = PREDICT_POS(node, key_cp);
+            int pos = PREDICT_POS(node, key_cp2);
             RT_ASSERT(BITMAP_GET(node->none_bitmap, pos) == 1);
             BITMAP_CLEAR(node->none_bitmap, pos);
             BITMAP_SET(node->child_bitmap, pos);
@@ -728,7 +728,7 @@ private:
     }
 
     /// bulk build, _keys must be sorted in asc order.
-    Node *build_tree_bulk(T *_keys, P *_values, int _size, bitmap_t is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
+    Node *build_tree_bulk(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
     {
         if (USE_FMCD)
         {
@@ -741,7 +741,7 @@ private:
     }
     /// bulk build, _keys must be sorted in asc order.
     /// split keys into three parts at each node.
-    Node *build_tree_bulk_fast(T *_keys, P *_values, int _size, bitmap_t is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
+    Node *build_tree_bulk_fast(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
     {
         RT_ASSERT(_size > 1);
 
@@ -907,7 +907,7 @@ private:
     }
     /// bulk build, _keys must be sorted in asc order.
     /// FMCD method.
-    Node *build_tree_bulk_fmcd(T *_keys, P *_values, int _size, bitmap_t is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
+    Node *build_tree_bulk_fmcd(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
     {
         RT_ASSERT(_size > 1);
 
@@ -1267,7 +1267,7 @@ private:
                     else
                     {
                         keys[begin] = node->items[i].comp.data.key;
-                        nodes.push_back(node->itmes[i].comp.child);
+                        nodes.push_back(node->items[i].comp.child);
                         BITMAP_SET(is_cp, begin);
                         begin++;
                     }
