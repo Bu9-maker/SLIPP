@@ -1,7 +1,7 @@
 import string
 import random
 
-n = 10000
+n = 100000
 length = 64
 random_strings = set()
 random_integers = set()
