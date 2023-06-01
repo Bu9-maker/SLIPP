@@ -67,7 +67,7 @@ int main()
     auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 
     double t = (double)elapsed.count() / keys.size();
-    cout << t / 1000 << endl;
+    cout << "throughput:" << t / 1000 << "Mops" << endl;
 
     return 0;
 }
