@@ -233,7 +233,7 @@ public:
             Node *node = s.top();
             s.pop();
 
-            printf("Node(%p, a = %g, b = %Lf, num_items = %d)", node, node->model.a, node->model.b, node->num_items);
+            printf("Node(%p, a = %g, b = %Lf, num_items = %d, layer = %d)", node, node->model.a, node->model.b, node->num_items, node->layer);
             printf("[");
             int first = 1;
             for (int i = 0; i < node->num_items; i++)

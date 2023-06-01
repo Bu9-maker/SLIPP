@@ -1,8 +1,8 @@
 import string
 import random
 
-n = 100000  # replace 10 with desired number of strings to generate
-length = 8
+n = 10000
+length = 64
 random_strings = set()
 random_integers = set()
 while len(random_strings) < n:
