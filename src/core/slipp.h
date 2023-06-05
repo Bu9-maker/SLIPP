@@ -92,7 +92,7 @@ public:
     {
         {
             std::vector<Node *> nodes;
-            for (int _ = 0; _ < 1e6; _++)
+            for (int _ = 0; _ < 1e7; _++)
             {
                 Node *node = build_tree_two(T(0), P(), T(1), P());
                 nodes.push_back(node);

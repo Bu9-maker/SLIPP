@@ -2,7 +2,7 @@ import string
 import random
 
 n = 1000000
-length = 8
+length = 64
 random_strings = set()
 random_integers = set()
 while len(random_strings) < n:

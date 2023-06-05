@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define KEY_LEN 8
+#define KEY_LEN 64
 
 int main()
 {
