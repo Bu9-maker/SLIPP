@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define KEY_LEN 64
+#define KEY_LEN 8
 
 int main()
 {
@@ -48,9 +48,6 @@ int main()
     //          << " = " << (slipp.exists(*it) ? "true" : "false") << endl;
     // }
 
-    double sum = 0;
-    double add = 1;
-
     // Start measuring time
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -66,8 +63,8 @@ int main()
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 
-    double t = (double)elapsed.count() / keys.size();
-    cout << "throughput:" << t / 1000 << "Mops" << endl;
+    double t = (double)keys.size() / elapsed.count();
+    cout << "throughput:" << t * 1000 << "Mops" << endl;
 
     return 0;
 }

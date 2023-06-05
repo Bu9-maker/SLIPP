@@ -204,26 +204,26 @@ public:
 
     StrKey &operator=(const StrKey &other) = default;
 
-    model_key_t to_model_key() const
-    {
-        model_key_t model_key;
-        int j = 0;
-        key_slice_t temp = 0;
-        int count = 0;
-        for (size_t i = 0; i < len; i++)
-        {
-            temp <<= 8;
-            temp |= buf[i];
-            count++;
-            if (count == KEY_SLICE_LEN)
-            {
-                model_key[j++] = temp;
-                count = 0;
-                temp = 0;
-            }
-        }
-        return model_key;
-    }
+    // model_key_t to_model_key() const
+    // {
+    //     model_key_t model_key;
+    //     int j = 0;
+    //     key_slice_t temp = 0;
+    //     int count = 0;
+    //     for (size_t i = 0; i < len; i++)
+    //     {
+    //         temp <<= 8;
+    //         temp |= buf[i];
+    //         count++;
+    //         if (count == KEY_SLICE_LEN)
+    //         {
+    //             model_key[j++] = temp;
+    //             count = 0;
+    //             temp = 0;
+    //         }
+    //     }
+    //     return model_key;
+    // }
     key_slice_t to_model_key(int layer) const
     {
         layer = layer < 0 ? 0 : layer;
