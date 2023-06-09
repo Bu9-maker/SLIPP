@@ -7,6 +7,8 @@
 #include <limits>
 #include <cstdio>
 #include <stack>
+#include <queue>
+#include <map>
 #include <vector>
 #include <cstring>
 #include <string>
@@ -92,7 +94,7 @@ public:
     {
         {
             std::vector<Node *> nodes;
-            for (int _ = 0; _ < 1e7; _++)
+            for (int _ = 0; _ < 1e6; _++)
             {
                 Node *node = build_tree_two(T(0), P(), T(1), P());
                 nodes.push_back(node);
@@ -728,7 +730,7 @@ private:
     }
 
     /// bulk build, _keys must be sorted in asc order.
-    Node *build_tree_bulk(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
+    Node *build_tree_bulk(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::map<int, Node *> &nodes, uint8_t _layer, int _treesize)
     {
         if (USE_FMCD)
         {
@@ -741,7 +743,7 @@ private:
     }
     /// bulk build, _keys must be sorted in asc order.
     /// split keys into three parts at each node.
-    Node *build_tree_bulk_fast(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
+    Node *build_tree_bulk_fast(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::map<int, Node *> &nodes, uint8_t _layer, int _treesize)
     {
         RT_ASSERT(_size > 1);
 
@@ -757,7 +759,7 @@ private:
 
         Node *ret = new_nodes(1);
         s.push((Segment){0, _size, 1, ret, _treesize});
-        int node_i = 0;
+        // int node_i = 0;
         while (!s.empty())
         {
             const int begin = s.top().begin;
@@ -780,7 +782,8 @@ private:
                     }
                     else
                     {
-                        Node *_ = build_tree_cp(_keys[begin], _values[begin], _keys[begin + 1], _layer, nodes.at(begin + 1));
+                        RT_ASSERT(nodes.find(begin + 1) != nodes.end());
+                        Node *_ = build_tree_cp(_keys[begin], _values[begin], _keys[begin + 1], _layer, nodes[begin + 1]);
                         memcpy(node, _, sizeof(Node));
                         delete_nodes(_, 1);
                     }
@@ -789,13 +792,15 @@ private:
                 {
                     if (BITMAP_GET(is_cp, begin + 1) == 0)
                     {
-                        Node *_ = build_tree_cp(_keys[begin + 1], _values[begin + 1], _keys[begin], _layer, nodes.at(begin));
+                        RT_ASSERT(nodes.find(begin) != nodes.end());
+                        Node *_ = build_tree_cp(_keys[begin + 1], _values[begin + 1], _keys[begin], _layer, nodes[begin]);
                         memcpy(node, _, sizeof(Node));
                         delete_nodes(_, 1);
                     }
                     else
                     {
-                        Node *_ = build_tree_cp2(_keys[begin], _keys[begin + 1], _layer, nodes.at(begin), nodes.at(begin + 1));
+                        RT_ASSERT(nodes.find(begin) != nodes.end() && nodes.find(begin + 1) != nodes.end());
+                        Node *_ = build_tree_cp2(_keys[begin], _keys[begin + 1], _layer, nodes[begin], nodes[begin + 1]);
                         memcpy(node, _, sizeof(Node));
                         delete_nodes(_, 1);
                     }
@@ -874,12 +879,17 @@ private:
                     {
                         BITMAP_CLEAR(node->none_bitmap, item_i);
                         node->items[item_i].comp.data.key = keys[offset];
-                        node->items[item_i].comp.data.value = values[offset];
-                        if (BITMAP_GET(is_cp, offset) == 1)
+
+                        if (BITMAP_GET(is_cp, begin + offset) == 1)
                         {
+                            RT_ASSERT(nodes.find(begin + offset) != nodes.end());
                             BITMAP_SET(node->child_bitmap, item_i);
                             BITMAP_SET(node->cp_bitmap, item_i);
-                            node->items[item_i].comp.child = nodes[node_i++];
+                            node->items[item_i].comp.child = nodes[begin + offset];
+                        }
+                        else
+                        {
+                            node->items[item_i].comp.data.value = values[offset];
                         }
                     }
                     else
@@ -888,7 +898,25 @@ private:
                         BITMAP_CLEAR(node->none_bitmap, item_i);
                         BITMAP_SET(node->child_bitmap, item_i);
                         node->items[item_i].comp.child = new_nodes(1);
-                        s.push((Segment){begin + offset, begin + next, level + 1, node->items[item_i].comp.child});
+                        int ts = 0;
+                        for (int i = begin + offset; i < begin + next; i++)
+                        {
+                            if (BITMAP_GET(is_cp, i) == 1)
+                            {
+                                RT_ASSERT(nodes.find(i) != nodes.end());
+                                ts += nodes[i]->size;
+                            }
+                            else
+                            {
+                                ts++;
+                            }
+                        }
+                        s.push((Segment){
+                            begin + offset,
+                            begin + next,
+                            level + 1,
+                            node->items[item_i].comp.child,
+                            ts});
                     }
                     if (next >= size)
                     {
@@ -907,7 +935,7 @@ private:
     }
     /// bulk build, _keys must be sorted in asc order.
     /// FMCD method.
-    Node *build_tree_bulk_fmcd(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::vector<Node *> &nodes, uint8_t _layer, int _treesize)
+    Node *build_tree_bulk_fmcd(T *_keys, P *_values, int _size, bitmap_t *is_cp, std::map<int, Node *> &nodes, uint8_t _layer, int _treesize)
     {
         RT_ASSERT(_size > 1);
 
@@ -923,7 +951,7 @@ private:
 
         Node *ret = new_nodes(1);
         s.push((Segment){0, _size, 1, ret, _treesize});
-        int node_i = 0;
+        // int node_i = 0;
         while (!s.empty())
         {
             const int begin = s.top().begin;
@@ -946,7 +974,8 @@ private:
                     }
                     else
                     {
-                        Node *_ = build_tree_cp(_keys[begin], _values[begin], _keys[begin + 1], _layer, nodes.at(begin + 1));
+                        RT_ASSERT(nodes.find(begin + 1) != nodes.end());
+                        Node *_ = build_tree_cp(_keys[begin], _values[begin], _keys[begin + 1], _layer, nodes[begin + 1]);
                         memcpy(node, _, sizeof(Node));
                         delete_nodes(_, 1);
                     }
@@ -955,13 +984,15 @@ private:
                 {
                     if (BITMAP_GET(is_cp, begin + 1) == 0)
                     {
-                        Node *_ = build_tree_cp(_keys[begin + 1], _values[begin + 1], _keys[begin], _layer, nodes.at(begin));
+                        RT_ASSERT(nodes.find(begin) != nodes.end());
+                        Node *_ = build_tree_cp(_keys[begin + 1], _values[begin + 1], _keys[begin], _layer, nodes[begin]);
                         memcpy(node, _, sizeof(Node));
                         delete_nodes(_, 1);
                     }
                     else
                     {
-                        Node *_ = build_tree_cp2(_keys[begin], _keys[begin + 1], _layer, nodes.at(begin), nodes.at(begin + 1));
+                        RT_ASSERT(nodes.find(begin) != nodes.end() && nodes.find(begin + 1) != nodes.end());
+                        Node *_ = build_tree_cp2(_keys[begin], _keys[begin + 1], _layer, nodes[begin], nodes[begin + 1]);
                         memcpy(node, _, sizeof(Node));
                         delete_nodes(_, 1);
                     }
@@ -1019,6 +1050,21 @@ private:
                         stats.fmcd_success_times++;
 
                         node->model.a = 1.0 / Ut;
+                        if (node->model.a < 0)
+                        {
+                            // printf("%lf\n", node->model.a);
+                            // printf("%lf\n", Ut);
+                            printf("D:%d\n", D);
+                            printf("size:%d\n", size);
+                            printf("i:%d\n", i);
+                            printf("layer:%d\n", node->layer);
+                            // for (int j = D; j <= size - 1 - D; j++)
+                            // {
+                            //     printf("%lld\n", (keys[j].to_model_key(node->layer)));
+                            // }
+                            // printf("%lld\n", (keys[D].to_model_key(node->layer)));
+                            // printf("%lld\n", (keys[size - 1 - D].to_model_key(node->layer)));
+                        }
                         node->model.b = (L - node->model.a * (static_cast<long double>(keys[size - 1 - D].to_model_key(node->layer)) +
                                                               static_cast<long double>(keys[D].to_model_key(node->layer)))) /
                                         2;
@@ -1047,7 +1093,6 @@ private:
                         node->num_items = size * static_cast<int>(BUILD_GAP_CNT + 1);
                         const double mid1_target = mid1_pos * static_cast<int>(BUILD_GAP_CNT + 1) + static_cast<int>(BUILD_GAP_CNT + 1) / 2;
                         const double mid2_target = mid2_pos * static_cast<int>(BUILD_GAP_CNT + 1) + static_cast<int>(BUILD_GAP_CNT + 1) / 2;
-
                         node->model.a = (mid2_target - mid1_target) / (mid2_key - mid1_key);
                         node->model.b = mid1_target - node->model.a * mid1_key;
                         RT_ASSERT(isfinite(node->model.a));
@@ -1092,12 +1137,17 @@ private:
                     {
                         BITMAP_CLEAR(node->none_bitmap, item_i);
                         node->items[item_i].comp.data.key = keys[offset];
-                        node->items[item_i].comp.data.value = values[offset];
-                        if (BITMAP_GET(is_cp, offset) == 1)
+
+                        if (BITMAP_GET(is_cp, begin + offset) == 1)
                         {
+                            RT_ASSERT(nodes.find(begin + offset) != nodes.end());
                             BITMAP_SET(node->child_bitmap, item_i);
                             BITMAP_SET(node->cp_bitmap, item_i);
-                            node->items[item_i].comp.child = nodes[node_i++];
+                            node->items[item_i].comp.child = nodes[begin + offset];
+                        }
+                        else
+                        {
+                            node->items[item_i].comp.data.value = values[offset];
                         }
                     }
                     else
@@ -1106,8 +1156,72 @@ private:
                         BITMAP_CLEAR(node->none_bitmap, item_i);
                         BITMAP_SET(node->child_bitmap, item_i);
                         node->items[item_i].comp.child = new_nodes(1);
-                        s.push((Segment){begin + offset, begin + next, level + 1, node->items[item_i].comp.child});
+                        int ts = 0;
+                        for (int i = begin + offset; i < begin + next; i++)
+                        {
+                            if (BITMAP_GET(is_cp, i) == 1)
+                            {
+                                RT_ASSERT(nodes.find(i) != nodes.end());
+                                ts += nodes[i]->size;
+                            }
+                            else
+                            {
+                                ts++;
+                            }
+                        }
+                        s.push((Segment){
+                            begin + offset,
+                            begin + next,
+                            level + 1,
+                            node->items[item_i].comp.child,
+                            ts});
                     }
+                    // if (next == offset + 1)
+                    // {
+                    //     BITMAP_CLEAR(node->none_bitmap, item_i);
+                    //     node->items[item_i].comp.data.key = keys[offset];
+
+                    //     if (BITMAP_GET(is_cp, begin + offset) == 1)
+                    //     {
+                    //         RT_ASSERT(!nodes.empty());
+                    //         BITMAP_SET(node->child_bitmap, item_i);
+                    //         BITMAP_SET(node->cp_bitmap, item_i);
+                    //         node->items[item_i].comp.child = nodes.front();
+                    //         nodes.pop();
+                    //     }
+                    //     else
+                    //     {
+                    //         node->items[item_i].comp.data.value = values[offset];
+                    //     }
+                    // }
+                    // else
+                    // {
+                    //     // ASSERT(next - offset <= (size+2) / 3);
+                    //     BITMAP_CLEAR(node->none_bitmap, item_i);
+                    //     BITMAP_SET(node->child_bitmap, item_i);
+                    //     node->items[item_i].comp.child = new_nodes(1);
+                    //     int ts = 0;
+                    //     for (int i = begin + offset; i < begin + next; i++)
+                    //     {
+                    //         if (BITMAP_GET(is_cp, i) == 1)
+                    //         {
+                    //             RT_ASSERT(!nodes.empty());
+                    //             std::queue<Node *> _nodes(nodes);
+                    //             ts += _nodes.front()->size;
+                    //             _nodes.pop();
+                    //         }
+                    //         else
+                    //         {
+                    //             ts++;
+                    //         }
+                    //     }
+                    //     s.push((Segment){
+                    //         begin + offset,
+                    //         begin + next,
+                    //         level + 1,
+                    //         node->items[item_i].comp.child,
+                    //         ts});
+                    // }
                     if (next >= size)
                     {
                         break;
@@ -1195,15 +1309,15 @@ private:
                 if (BITMAP_GET(node->none_bitmap, i) == 0)
                 {
                     if (BITMAP_GET(node->child_bitmap, i) == 0)
-                    {
+                    { // DATA
                         this_layer_size++;
                     }
                     else if (BITMAP_GET(node->cp_bitmap, i) == 0)
-                    {
+                    { // NODE
                         s.push(node->items[i].comp.child);
                     }
                     else
-                    {
+                    { // NODE_cp
                         cp++;
                     }
                 }
@@ -1229,6 +1343,10 @@ private:
                     {
                         cp++;
                     }
+                    else if (BITMAP_GET(node->child_bitmap, i) == 1)
+                    {
+                        s.push(node->items[i].comp.child);
+                    }
                 }
             }
         }
@@ -1236,7 +1354,7 @@ private:
         return cp;
     }
 
-    void scan_and_destory_tree(Node *_root, T *keys, P *values, bitmap_t *is_cp, std::vector<Node *> &nodes, bool destory = true)
+    void scan_and_destory_tree(Node *_root, T *keys, P *values, bitmap_t *is_cp, std::map<int, Node *> &nodes, bool destory = true)
     {
         typedef std::pair<int, Node *> Segment; // <begin, Node*>
         std::stack<Segment> s;
@@ -1254,20 +1372,20 @@ private:
                 if (BITMAP_GET(node->none_bitmap, i) == 0)
                 {
                     if (BITMAP_GET(node->child_bitmap, i) == 0)
-                    {
+                    { // DATA
                         keys[begin] = node->items[i].comp.data.key;
                         values[begin] = node->items[i].comp.data.value;
                         begin++;
                     }
                     else if (BITMAP_GET(node->cp_bitmap, i) == 0)
-                    {
+                    { // NODE
                         s.push(Segment(begin, node->items[i].comp.child));
                         begin += get_this_layer_size(node->items[i].comp.child);
                     }
-                    else
-                    {
+                    else if (BITMAP_GET(node->cp_bitmap, i) == 1)
+                    { // NODE_cp
                         keys[begin] = node->items[i].comp.data.key;
-                        nodes.push_back(node->items[i].comp.child);
+                        nodes[begin] = node->items[i].comp.child;
                         BITMAP_SET(is_cp, begin);
                         begin++;
                     }
@@ -1286,6 +1404,7 @@ private:
                     node->none_bitmap[0] = 0xff;
                     node->child_bitmap[0] = 0;
                     node->cp_bitmap[0] = 0;
+                    node->layer = 0;
                     pending_two.push(node);
                 }
                 else
@@ -1367,6 +1486,7 @@ private:
         Node *path[MAX_DEPTH];
         int path_size = 0;
         int insert_to_data = 0;
+        uint8_t insert_layer = 0;
 
         for (Node *node = _node;;)
         {
@@ -1381,6 +1501,7 @@ private:
                 BITMAP_CLEAR(node->none_bitmap, pos);
                 node->items[pos].comp.data.key = key;
                 node->items[pos].comp.data.value = value;
+                insert_layer = node->layer;
                 break;
             }
             else if (BITMAP_GET(node->child_bitmap, pos) == 0)
@@ -1395,6 +1516,7 @@ private:
                     BITMAP_SET(node->cp_bitmap, pos); // NODE -> NODE_cp
                     insert_to_data = 0;
                 }
+                insert_layer = layer;
                 break;
             }
             else if (BITMAP_GET(node->cp_bitmap, pos) == 0)
@@ -1424,6 +1546,7 @@ private:
                         node->items[pos].comp.data.key.LCP(key, layer - 1);
                     }
                     // insert_to_data = 1;
+                    insert_layer = layer;
                     break;
                 }
             }
@@ -1438,7 +1561,7 @@ private:
             Node *node = path[i];
             const int num_inserts = node->num_inserts;
             const int num_insert_to_data = node->num_insert_to_data;
-            const bool need_rebuild = node->fixed == 0 && node->size >= node->build_size * 4 && node->size >= 64 && num_insert_to_data * 10 >= num_inserts;
+            const bool need_rebuild = node->fixed == 0 && node->layer == insert_layer && node->size >= node->build_size * 4 && node->size >= 64 && num_insert_to_data * 10 >= num_inserts;
 
             if (need_rebuild)
             {
@@ -1448,7 +1571,10 @@ private:
                 P *values = new P[ESIZE];
                 bitmap_t *is_cp = new_bitmap(BITMAP_SIZE(ESIZE));
                 memset(is_cp, 0, sizeof(bitmap_t) * BITMAP_SIZE(ESIZE));
-                std::vector<Node *> nodes(cpSIZE);
+                // std::queue<Node *> nodes;
+                std::map<int, Node *> nodes;
+                const uint8_t _layer = node->layer;
+                const int _size = node->size;
 
 #if COLLECT_TIME
                 auto start_time_scan = std::chrono::high_resolution_clock::now();
@@ -1459,11 +1585,17 @@ private:
                 auto duration_scan = end_time_scan - start_time_scan;
                 stats.time_scan_and_destory_tree += std::chrono::duration_cast<std::chrono::nanoseconds>(duration_scan).count() * 1e-9;
 #endif
+                // for (int i = 0; i < ESIZE; i++)
+                // {
+                //     printf("%s\n", keys[i].to_string().c_str());
+                //     printf("%lld\n", keys[i].to_model_key(node->layer));
+                // }
+                RT_ASSERT(nodes.size() == cpSIZE);
 
 #if COLLECT_TIME
                 auto start_time_build = std::chrono::high_resolution_clock::now();
 #endif
-                Node *new_node = build_tree_bulk(keys, values, ESIZE, is_cp, nodes, node->layer, node->size);
+                Node *new_node = build_tree_bulk(keys, values, ESIZE, is_cp, nodes, _layer, _size);
 #if COLLECT_TIME
                 auto end_time_build = std::chrono::high_resolution_clock::now();
                 auto duration_build = end_time_build - start_time_build;
