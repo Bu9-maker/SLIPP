@@ -22,7 +22,6 @@ class StrKey
 #if (KEY_SLICE_LEN == 4)
     typedef uint32_t key_slice_t;
 #endif
-    typedef std::array<key_slice_t, len / KEY_SLICE_LEN> model_key_t;
 
 public:
     static constexpr size_t buff_size() { return len; }
@@ -55,15 +54,13 @@ public:
         buf.fill(0);
         std::copy(other.buf.cbegin(), other.buf.cbegin() + (layer + 1) * KEY_SLICE_LEN, buf.begin());
     }
-    // StrKey(const StrKey &s, const uint8_t layer) // return the 0~layer layers of s
-    // {
-    //     std::copy(s.buf.cbegin(), s.buf.cbegin() + (layer + 1) * KEY_SLICE_LEN, buf.begin());
-    // }
+
     uint8_t distinguish_layer(const StrKey &s) const
     {
         auto it1 = this->buf.cbegin();
         auto it2 = s.buf.cbegin();
         uint8_t layer = 0;
+
         int count = 0;
         for (;
              it1 != this->buf.end() && it2 != s.buf.end() && *it1 == *it2;
@@ -76,40 +73,24 @@ public:
                 layer++;
             }
         }
+        if (it1 == this->buf.end() && it2 == s.buf.end())
+            return 255;
+
         return layer;
     }
 
     StrKey &operator=(const StrKey &other) = default;
 
-    // model_key_t to_model_key() const
-    // {
-    //     model_key_t model_key;
-    //     int j = 0;
-    //     key_slice_t temp = 0;
-    //     int count = 0;
-    //     for (size_t i = 0; i < len; i++)
-    //     {
-    //         temp <<= 8;
-    //         temp |= buf[i];
-    //         count++;
-    //         if (count == KEY_SLICE_LEN)
-    //         {
-    //             model_key[j++] = temp;
-    //             count = 0;
-    //             temp = 0;
-    //         }
-    //     }
-    //     return model_key;
-    // }
     key_slice_t to_model_key(int layer) const
     {
         layer = layer < 0 ? 0 : layer;
         key_slice_t temp = 0;
-        for (size_t i = 0; i < KEY_SLICE_LEN; i++)
-        {
-            temp <<= 8;
-            temp |= buf[KEY_SLICE_LEN * layer + i];
-        }
+        // for (size_t i = 0; i < KEY_SLICE_LEN; i++)
+        // {
+        //     temp <<= 8;
+        //     temp |= buf[KEY_SLICE_LEN * layer + i];
+        // }
+        temp = be64toh(*(uint64_t *)(buf.begin() + layer * 8));
         return temp;
     }
 
